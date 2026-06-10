@@ -1,25 +1,32 @@
 from pathlib import Path
-import requests
+import urllib.request
 import re
 
 BLACKLIST_URLS = Path("sources/blacklist_urls.txt")
 WHITELIST_URLS = Path("sources/whitelist_urls.txt")
 
-OUTPUT = Path("output/blacklist-mihomo.yaml")
-OUTPUT.parent.mkdir(exist_ok=True)
+OUTPUT_DIR = Path("output")
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+OUTPUT_FILE = OUTPUT_DIR / "blacklist-mihomo.yaml"
 
 DOMAIN_RE = re.compile(
-    r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$",
-    re.I
+    r"^(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$",
+    re.IGNORECASE
 )
 
-def read_urls(file):
-    if not file.exists():
-        return []
 
+def read_url_list(file_path):
     urls = []
 
-    for line in file.read_text().splitlines():
+    if not file_path.exists():
+        return urls
+
+    for line in file_path.read_text(
+        encoding="utf-8",
+        errors="ignore"
+    ).splitlines():
+
         line = line.strip()
 
         if not line:
@@ -50,6 +57,13 @@ def extract_domain(line):
 
     parts = line.split()
 
+    # Supports:
+    #
+    # example.com
+    # 0.0.0.0 example.com
+    # 127.0.0.1 example.com
+    #
+
     candidate = parts[-1]
 
     if candidate.startswith("*."):
@@ -67,16 +81,25 @@ def download_domains(urls):
     domains = set()
 
     for url in urls:
-        print("Downloading:", url)
+        print(f"Downloading: {url}")
 
         try:
-            r = requests.get(url, timeout=120)
-            r.raise_for_status()
+            with urllib.request.urlopen(
+                url,
+                timeout=120
+            ) as response:
+
+                text = response.read().decode(
+                    "utf-8",
+                    errors="ignore"
+                )
+
         except Exception as e:
-            print("Failed:", e)
+            print(f"Failed: {url}")
+            print(e)
             continue
 
-        for line in r.text.splitlines():
+        for line in text.splitlines():
             domain = extract_domain(line)
 
             if domain:
@@ -85,10 +108,24 @@ def download_domains(urls):
     return domains
 
 
-def whitelisted(domain, whitelist):
+def is_whitelisted(domain, whitelist):
+    """
+    If whitelist contains:
+
+        google.com
+
+    remove:
+
+        google.com
+        www.google.com
+        mail.google.com
+        foo.bar.google.com
+    """
+
     current = domain
 
     while True:
+
         if current in whitelist:
             return True
 
@@ -98,26 +135,34 @@ def whitelisted(domain, whitelist):
         current = current.split(".", 1)[1]
 
 
-blacklist = download_domains(
-    read_urls(BLACKLIST_URLS)
-)
+blacklist_urls = read_url_list(BLACKLIST_URLS)
+whitelist_urls = read_url_list(WHITELIST_URLS)
 
-whitelist = download_domains(
-    read_urls(WHITELIST_URLS)
-)
+print(f"Blacklist sources: {len(blacklist_urls)}")
+print(f"Whitelist sources: {len(whitelist_urls)}")
 
-result = {
-    d
-    for d in blacklist
-    if not whitelisted(d, whitelist)
+blacklist = download_domains(blacklist_urls)
+whitelist = download_domains(whitelist_urls)
+
+final_blacklist = {
+    domain
+    for domain in blacklist
+    if not is_whitelisted(domain, whitelist)
 }
 
-with open(OUTPUT, "w", encoding="utf-8") as f:
+with open(
+    OUTPUT_FILE,
+    "w",
+    encoding="utf-8"
+) as f:
+
     f.write("payload:\n")
 
-    for domain in sorted(result):
+    for domain in sorted(final_blacklist):
         f.write(f"  - {domain}\n")
 
-print("Blacklist:", len(blacklist))
-print("Whitelist:", len(whitelist))
-print("Final:", len(result))
+print()
+print("Blacklist loaded :", len(blacklist))
+print("Whitelist loaded :", len(whitelist))
+print("Final blacklist  :", len(final_blacklist))
+print("Output file      :", OUTPUT_FILE)
