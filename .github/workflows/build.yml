@@ -1,14 +1,14 @@
-name: Build Mihomo Blacklist
+name: Build Clash Blacklist
 
 on:
   workflow_dispatch:
 
-  schedule:
-    - cron: "0 */6 * * *"
-
   push:
     branches:
       - main
+
+  schedule:
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: write
@@ -18,13 +18,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - run: python build.py
+      - name: Build blacklist
+        run: python build.py
 
       - name: Commit output
         run: |
@@ -34,6 +37,6 @@ jobs:
           git add output/
 
           git diff --cached --quiet || (
-            git commit -m "Update generated blacklist"
+            git commit -m "Update blacklist"
             git push
           )
