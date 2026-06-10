@@ -1,0 +1,39 @@
+name: Build Mihomo Blacklist
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 */6 * * *"
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - run: python build.py
+
+      - name: Commit output
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git add output/
+
+          git diff --cached --quiet || (
+            git commit -m "Update generated blacklist"
+            git push
+          )
