@@ -8,7 +8,7 @@ on:
       - main
 
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
 
 permissions:
   contents: write
@@ -40,3 +40,8 @@ jobs:
             git commit -m "Update blacklist"
             git push
           )
+
+
+      - name: Keepalive
+        uses: entepotenz/keep-github-actions-alive-min-dependencies@v1
+        
