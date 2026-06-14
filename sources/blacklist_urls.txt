@@ -1,4 +1,5 @@
 https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/light.txt
+https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.mini.txt
 https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.mini.txt
 https://raw.githubusercontent.com/Flo5k5/proxyware-blocklist/refs/heads/main/proxyware-domains.txt
 https://gitlab.com/nosync/adblock-filters/-/raw/main/blacklist_domain.txt
